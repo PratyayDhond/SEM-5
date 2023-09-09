@@ -19,6 +19,7 @@ class SubnetBitLimitExceededError{};
 class InsufficientHostIdBitsError{};
 class InvalidNetworkClassException{};
 class InvalidIpErrorException{};
+class InsufficientHostAddressesException{};
 
 class SubnetMask{
     private:
@@ -121,9 +122,9 @@ class SubnetMask{
                     currentBit = i % 8;
                     customMask[currentOctate] += '0';
                 }
-                for(auto a : customMask)
-                    cout << "--" << a << "--";
-                cout << endl;
+                // for(auto a : customMask)             // prints all the bits of the current custom mask
+                //     cout << "--" << a << "--";
+                // cout << endl;
                 for(int i = (int) getNetworkClass(), currentMask = 0; i <= (int) ClassC; i++){
                     octates[i] = stoi(customMask[currentMask++],0,2);
                 }
@@ -293,9 +294,10 @@ string getIpString(){
 
 }
 
-void displayBroadCastId(SubnetMask subnetMask, IPAddress ipAddress){
+vector<int> getBroadCastID(SubnetMask subnetMask, IPAddress ipAddress){
     vector<string> broadcastIdOctates(4,"11111111");
     vector<string> networkId(4,"11111111");
+    vector<int> octates;
     int octateCount = 0;
 
     for(int i = 0; i < 4; i++){
@@ -306,34 +308,81 @@ void displayBroadCastId(SubnetMask subnetMask, IPAddress ipAddress){
     for(int octate = subnetMask.getNetworkClass(); octate < 4; octate++){
         for(; i < 8; i++)
             broadcastIdOctates[octate][i] = '1';
-        i = 0;
+        if(i >= 8)
+            i -= 8;
     }
 
     int count = 0;
     for(auto a : broadcastIdOctates){
-        cout << stoi(a,0,2);
+        octates.push_back(stoi(a,0,2));
+        // cout << stoi(a,0,2);
+        // if(count++ < 3)
+        //     cout << ".";
+    }
+    return octates;
+}
+
+vector<int> getNetworkID( SubnetMask subnetMask, IPAddress ipAddress){
+    int count = 0;
+    vector<int> octate;
+    for(int i = 0; i < 4; i++){
+        int ipVal = ipAddress.getIpAddress()[i];
+        int subnetval = subnetMask.getMask()[i];
+            octate.push_back(ipVal & subnetval);
+    }
+    return octate;
+}
+
+void displayAddress(vector<int> IpOctate, char endChar = '\n'){
+    int count = 0;
+    for(auto a : IpOctate){
+        cout << a;
         if(count++ < 3)
             cout << ".";
     }
-    cout << endl;
+    cout << endChar;
+    return;
+}
+
+void displayUsableHostRange(SubnetMask subnetMask, IPAddress ipAddress){
+    try{
+        vector<int> startOctate = getNetworkID(subnetMask,ipAddress);
+        vector<int> endOctate = getBroadCastID(subnetMask,ipAddress);
+        startOctate[3]++;
+        endOctate[3]--;
+        if(startOctate == endOctate)
+            throw InsufficientHostAddressesException();
+        displayAddress(startOctate, ' ');
+        cout << " - ";
+        displayAddress(endOctate,' ');
+        cout << endl;
+    }catch(InsufficientHostAddressesException i){
+        cout<<"You do not have sufficient Addresses left for Host IDs.";
+    }catch(...){
+        cout<<"An Unhandled Exception has occurred at displayUsableHostRange() function";
+    }
+    return;
+   
 }
 
 void displayDetails(SubnetMask subnetMask, IPAddress ipAddress){
+    int count = 0;  // for printing the dots every time
+    cout << "Updated Subnet Mask: ";
+    displaySubnetMask(subnetMask);
+    cout << "Subnet Bits : " << subnetMask.getSubnetBits() << "\n";
+
     cout << "Number of Possible Subnets : " << subnetMask.getNumberOfPossibleSubnets() << endl;
     cout << "Number of Hosts per Subnet : " << subnetMask.getNumberOfPossibleHosts() << endl;
     
     cout << "Network ID: ";
-    int count = 0;
-    for(int i = 0; i < 4; i++){
-        int ipVal = ipAddress.getIpAddress()[i];
-        int subnetval = subnetMask.getMask()[i];
-        cout << (ipVal & subnetval);
-        if(count++ < 3)
-            cout << ".";
-    }
-    cout << endl;
+    displayAddress(getNetworkID(subnetMask,ipAddress));
+    
 
-    displayBroadCastId(subnetMask,ipAddress);
+    cout <<"Usable Host range: ";
+    displayUsableHostRange(subnetMask, ipAddress);
+
+    cout << "Broadcast ID: ";
+    displayAddress(getBroadCastID(subnetMask,ipAddress));
 
 }
 
@@ -358,8 +407,7 @@ int main(){
     displaySubnetMask(subnetMask);
     int subnetBits = getSubnetBits(subnetMask);
     subnetMask.setMask(subnetBits);
-    displaySubnetMask(subnetMask);
-    cout << "Subnet Bits : " << subnetMask.getSubnetBits() << "\n";
+
     
     IPAddress ipAddress;
     ipAddress.setIpAddress(getIpString());
