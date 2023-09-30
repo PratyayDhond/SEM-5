@@ -6,5 +6,10 @@ if [ -d "$directoryName" ]; then
     echo "Directory '$directoryName' already exists."
 else
     mkdir "$directoryName"
-    echo "Directory '$directoryName' created."
+
+    if [ $? -eq 0 ]; then
+        echo "Directory '$directoryName' created."
+    else
+        echo "There was some issue creating the directory with title '$directoryName'"
+    fi
 fi

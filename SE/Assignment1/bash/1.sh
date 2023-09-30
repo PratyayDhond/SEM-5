@@ -3,8 +3,8 @@ read -p "Enter the Selling Price: " sp
 
 profit=$(expr $sp - $bp)
 if [ $profit -ge 0 ]; then
-    echo "You made a profit of $profit\n."
+    echo "You made a profit of $profit."
 else
     loss=$(( $profit * -1))
-    echo "You incurred a loss of $loss\n."
+    echo "You incurred a loss of $loss."
 fi
