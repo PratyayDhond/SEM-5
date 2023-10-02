@@ -2,6 +2,8 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
+import java.time.format.DateTimeFormatter;  
+import java.time.LocalDateTime;    
 public class ChatRoomApplication
 {
     static final String EXIT = "#EXIT";
@@ -29,16 +31,19 @@ public class ChatRoomApplication
                 socket.joinGroup(multicastGroup);   // joining the user specified multicast IP address
                 Thread t = new Thread(new ReadMessagesThread(socket,multicastGroup,portNumber));
               
-                t.start(); 
+                t.start();
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm:ss");  
+                LocalDateTime now = LocalDateTime.now();  
                 System.out.println("Enter `#exit` to terminate conversation | Start typing messages...\n");
                 while(true)
                 {
                     String message;
                     message = sc.nextLine();
+                    now = LocalDateTime.now();
                     if(message.equalsIgnoreCase(ChatRoomApplication.EXIT)) // CHECK EXIT CONDITION
                     {
                         finished = true;
-                        message = "--- " + name + " has left the chat. ---";
+                        message = "[" + dtf.format(now) + "] " + "--- " + name + " has left the chat. ---";
                          byte[] buffer = message.getBytes();
                         DatagramPacket datagram = new DatagramPacket(buffer,buffer.length,multicastGroup,portNumber);
                         socket.send(datagram);
@@ -47,7 +52,7 @@ public class ChatRoomApplication
                         System.out.println("You have successfully left the chatroom. Have a great day.");
                         break;
                     }
-                    message = name + ": " + message;
+                    message = "[" + dtf.format(now) + "] " + name + ": " + message;
                     byte[] buffer = message.getBytes();
                     DatagramPacket datagram = new DatagramPacket(buffer,buffer.length,multicastGroup,portNumber);
                     socket.send(datagram);
@@ -92,7 +97,7 @@ class ReadMessagesThread implements Runnable
             {
                 socket.receive(datagram);
                 message = new String(buffer,0,datagram.getLength(),"UTF-8");
-                if(!(message.startsWith(ChatRoomApplication.name) || message.startsWith("--- " + ChatRoomApplication.name)))
+                if(!(message.contains(ChatRoomApplication.name + ":") || message.contains("--- " + ChatRoomApplication.name)))
                         System.out.println(message);
             }
             catch(IOException e)
