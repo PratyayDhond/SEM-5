@@ -3,7 +3,8 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.time.format.DateTimeFormatter;  
-import java.time.LocalDateTime;    
+import java.time.LocalDateTime; 
+   
 public class ChatRoomApplication
 {
     static final String EXIT = "#EXIT";
@@ -18,7 +19,7 @@ public class ChatRoomApplication
         else
         {
             try
-            {
+            {   
                 InetAddress multicastGroup = InetAddress.getByName(args[0]);
                 int portNumber = Integer.parseInt(args[1]);
                 Scanner sc = new Scanner(System.in);
@@ -26,7 +27,6 @@ public class ChatRoomApplication
                 name = sc.next();
                 sc.nextLine();
                 MulticastSocket socket = new MulticastSocket(portNumber);
-              
                 socket.setTimeToLive(0);    // setting ttl to 0 as no router hops will be there since running on localhost
                 socket.joinGroup(multicastGroup);   // joining the user specified multicast IP address
                 Thread t = new Thread(new ReadMessagesThread(socket,multicastGroup,portNumber));
@@ -35,6 +35,14 @@ public class ChatRoomApplication
                 DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm:ss");  
                 LocalDateTime now = LocalDateTime.now();  
                 System.out.println("Enter `#exit` to terminate conversation | Start typing messages...\n");
+                if(name.equalsIgnoreCase("Server"))
+                    System.out.println("Enter `kick {username} to remove user from the group");
+                else{
+                    String message = "`" + name + "` has joined the chat!";
+                    byte[] buffer = message.getBytes();
+                    DatagramPacket datagram = new DatagramPacket(buffer,buffer.length,multicastGroup,portNumber);
+                    socket.send(datagram);
+                }
                 while(true)
                 {
                     String message;
@@ -61,7 +69,7 @@ public class ChatRoomApplication
             catch(SocketException se)
             {
                 System.out.println("Error creating socket");
-                se.printStackTrace();
+                // se.printStackTrace();
             }
             catch(IOException ie)
             {
@@ -71,6 +79,7 @@ public class ChatRoomApplication
         }
     }
 }
+
 class ReadMessagesThread implements Runnable
 {
     private MulticastSocket socket;
@@ -87,18 +96,37 @@ class ReadMessagesThread implements Runnable
     @Override
     public void run()
     {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm:ss");  
+        LocalDateTime now = LocalDateTime.now();  
         while(!ChatRoomApplication.finished)
         {
                 byte[] buffer = new byte[ReadMessagesThread.MESSAGE_LENGTH];
                 DatagramPacket datagram = new
                 DatagramPacket(buffer,buffer.length,multicastGroup,portNumber);
                 String message;
+                now = LocalDateTime.now();
             try
             {
                 socket.receive(datagram);
                 message = new String(buffer,0,datagram.getLength(),"UTF-8");
+                // System.out.println(ChatRoomApplication.name);
+                if(message.substring(11).equalsIgnoreCase("server: kick " + ChatRoomApplication.name)){
+                    socket.leaveGroup(multicastGroup);
+                    socket.close();
+                    System.out.println("You have been kicked out from the server.");
+                    System.exit(0);
+                    return;
+                }
+                if(message.substring(11,11+12).equalsIgnoreCase("server: kick")){
+                    continue;   
+                }
+
+                if(message.contains("` has joined the chat")){
+                    System.out.println("----" + message + "----"); 
+                    continue;                    
+                }
                 if(!(message.contains(ChatRoomApplication.name + ":") || message.contains("--- " + ChatRoomApplication.name)))
-                        System.out.println(message);
+                        System.out.println("[" + dtf.format(now) + "] "+ message);
             }
             catch(IOException e)
             {
