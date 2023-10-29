@@ -4,7 +4,7 @@ calculate_grade() {
   percentage=$1
   if (( $(echo "$percentage >= 90" | bc -l) )); then
     echo "AA"
-  elif (( $(echo "$percentage >= 80" | bc -l) )); then
+  elif (( $(echo "$percentage >= 8  0" | bc -l) )); then
     echo "AB"
   elif (( $(echo "$percentage >= 70" | bc -l) )); then
     echo "BB"
